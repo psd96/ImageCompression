@@ -51,7 +51,7 @@ int main()
     //Convert the 2D array data to image matrix
     Mat quant = Mat(8,8,CV_8UC1,&data);
 
-    //Discrete Cosine Tranform
+    //Discrete Cosine Transform
     for(int i=0; i < height; i+=8) {
         for(int j=0; j < width; j+=8) {
             Mat block = dctImage(Rect(j,i,8,8));
