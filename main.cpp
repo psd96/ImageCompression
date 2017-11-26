@@ -12,7 +12,7 @@ using namespace std;
 
 const char* _windowname = "Original Image";
 const char* _dctwindow = "DCT Image";
-const char* _filename = "../Images/PandaOriginal.bmp";
+const char* _filename = "../Images/2.ppm";
 
 //Data for quantization matrix
 int data[8][8] = {
@@ -41,8 +41,8 @@ int main()
     moveWindow(_windowname, x, y);
     imshow(_windowname, image);
 
-    x += 300;
-    y += 300;
+    x += 400;
+    y += 0;
 
     int height = image.size().height;
     int width = image.size().width;
@@ -52,12 +52,16 @@ int main()
     Mat quant = Mat(8,8,CV_8UC1,&data);
 
     //Discrete Cosine Transform
+     //Splits Image into blocks 8x8 and performs DCT on each of these blocks.
     for(int i=0; i < height; i+=8) {
         for(int j=0; j < width; j+=8) {
             Mat block = dctImage(Rect(j,i,8,8));
             vector<Mat> planes;
+            //Splits image into single channel array, planes.
             split(block,planes);
             vector<Mat> outplanes(planes.size());
+
+            //Loop through all channels and perform DCT
             for(int k=0; k < planes.size(); k++) {
                 planes[k].convertTo(planes[k],CV_32FC1);
                 dct(planes[k],outplanes[k]);
@@ -65,13 +69,17 @@ int main()
             }
 
             //Quantization
-            //cvtColor(block,block,CV_BGR2GRAY);
+            /*if (planes.size() > 1) {
+                cvtColor(block, block, CV_BGR2GRAY);
+            }
             divide(block,quant,block);
             multiply(block,quant,block);
-            merge(outplanes,block);
+            merge(outplanes,block);*/
         }
     }
 
+
+    /*
     //Inverse Discrete Cosine Transform
     for(int i=0; i < height; i+=8) {
          for(int j=0; j < width; j+=8) {
@@ -86,12 +94,13 @@ int main()
              }
              merge(outplanes,block);
          }
-    }
+    }*/
+
 
     namedWindow(_dctwindow, CV_WINDOW_AUTOSIZE);
     moveWindow(_dctwindow, x,y);
     imshow(_dctwindow, dctImage);
-    imwrite("dst.jpg",dctImage);
+    imwrite("../Images/2_1.jpeg",dctImage);
 
     waitKey(0);
 
