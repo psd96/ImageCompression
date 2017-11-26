@@ -51,14 +51,18 @@ int main()
     //Convert the 2D array data to image matrix
     Mat quant = Mat(8,8,CV_8UC1,&data);
 
+
     //Discrete Cosine Transform
      //Splits Image into blocks 8x8 and performs DCT on each of these blocks.
     for(int i=0; i < height; i+=8) {
         for(int j=0; j < width; j+=8) {
+            //Takes a block from Image of size 8x8 starting at (i,j)
             Mat block = dctImage(Rect(j,i,8,8));
             vector<Mat> planes;
+
             //Splits image into single channel array, planes.
             split(block,planes);
+
             vector<Mat> outplanes(planes.size());
 
             //Loop through all channels and perform DCT
@@ -68,15 +72,22 @@ int main()
                 outplanes[k].convertTo(outplanes[k],CV_8UC1);
             }
 
-            //Quantization
-            /*if (planes.size() > 1) {
-                cvtColor(block, block, CV_BGR2GRAY);
-            }
+            //Merges channel arrays into one
+            merge(outplanes,block);
+            cvtColor(block, block, CV_BGR2GRAY);
             divide(block,quant,block);
-            multiply(block,quant,block);
-            merge(outplanes,block);*/
+
+
+            /*
+             //Quantization
+             cvtColor(block, block, CV_BGR2GRAY);
+             divide(block,quant,block);
+             multiply(block,quant,block);
+             merge(outplanes,block);
+             */
         }
     }
+
 
 
     /*
@@ -94,13 +105,15 @@ int main()
              }
              merge(outplanes,block);
          }
-    }*/
+    }
+     */
+
 
 
     namedWindow(_dctwindow, CV_WINDOW_AUTOSIZE);
     moveWindow(_dctwindow, x,y);
     imshow(_dctwindow, dctImage);
-    imwrite("../Images/2_1.jpeg",dctImage);
+    imwrite("../Images/2_1.ppm",dctImage);
 
     waitKey(0);
 
