@@ -15,7 +15,7 @@ const char* _dctwindow = "DCT Image";
 const char* _filename = "../Images/2.ppm";
 
 //Data for quantization matrix
-int data[8][8] = {
+int dataLum[8][8] = {
         {16, 11, 10, 16, 24, 40, 51, 61},
         {12, 12, 14, 19, 26, 58, 60, 55},
         {14, 13, 16, 24, 40, 57, 69, 56},
@@ -26,9 +26,24 @@ int data[8][8] = {
         {72, 92, 95, 98, 112, 100, 103, 99}
 };
 
+double dataChrom[8][8] = {
+        {17, 18, 24, 27, 99, 99, 99, 99},
+        {18, 21, 26, 66, 99, 99, 99, 99},
+        {24, 26, 56, 99, 99, 99, 99, 99},
+        {47, 66, 99, 99, 99, 99, 99, 99},
+        {99, 99, 99, 99, 99, 99, 99, 99},
+        {99, 99, 99, 99, 99, 99, 99, 99},
+        {99, 99, 99, 99, 99, 99, 99, 99},
+        {99, 99, 99, 99, 99, 99, 99, 99}
+};
+
+void zigZag(Mat input){
+
+}
+
 int main()
 {
-    Mat image = imread(_filename, CV_LOAD_IMAGE_UNCHANGED);
+    Mat image = imread(_filename, CV_LOAD_IMAGE_COLOR);
     if(image.empty()) {
         cout<<"Can't load the image from "<<_filename<<endl;
         return -1;
@@ -47,6 +62,14 @@ int main()
     int height = image.size().height;
     int width = image.size().width;
     Mat dctImage = image.clone();
+    cvtColor(dctImage, dctImage, CV_BGR2YCrCb);
+    /*dctImage.convertTo(dctImage, CV_64FC1);
+    dct(dctImage, dctImage);
+    imshow("DCT", dctImage);
+    idct(dctImage, dctImage);
+    dctImage.convertTo(dctImage, CV_8UC1);*/
+
+
 
     /*
     //Changing Quality Level
@@ -62,45 +85,39 @@ int main()
      */
 
     //Convert the 2D array data to image matrix
-    Mat quant = Mat(8,8,CV_8UC1,&data);
+    Mat quantLum = Mat(8,8,CV_64FC1,&dataLum);
+    Mat quantChrom = Mat(8,8,CV_64FC1,&dataChrom);
+
 
 
     //Discrete Cosine Transform
-     //Splits Image into blocks 8x8 and performs DCT on each of these blocks.
+    //Splits Image into blocks 8x8 and performs DCT on each of these blocks.
     for(int i=0; i < height; i+=8) {
         for(int j=0; j < width; j+=8) {
             //Takes a block from Image of size 8x8 starting at (i,j)
             Mat block = dctImage(Rect(j,i,8,8));
-
             vector<Mat> planes;
 
             //Splits image into single channel array, planes.
             split(block,planes);
-
             vector<Mat> outplanes(planes.size());
 
             //Loop through all channels and perform DCT
             for(int k=0; k < planes.size(); k++) {
-                planes[k].convertTo(planes[k],CV_64F);
+                planes[k].convertTo(planes[k],CV_64FC1);
                 subtract(planes[k], 128.0, planes[k]);
                 dct(planes[k],outplanes[k]);
-                //add(planes[k], 128.0, planes[k]);
+                //Quantization
+                divide(outplanes[k],quantLum,outplanes[k]);
                 outplanes[k].convertTo(outplanes[k],CV_8UC1);
             }
-
             //Merges channel arrays into one
-            block.copyTo(dctImage(Rect(j,i,8,8)));
-            cvtColor(block, block, CV_BGR2GRAY);
-            //Quantization
-            divide(block,quant,block);
             merge(outplanes,block);
 
         }
     }
+    //imshow("COMPRESSION", dctImage);
 
-
-
-    /*
     //Inverse Discrete Cosine Transform
     for(int i=0; i < height; i+=8) {
          for(int j=0; j < width; j+=8) {
@@ -109,21 +126,23 @@ int main()
              split(block,planes);
              vector<Mat> outplanes(planes.size());
              for(int k=0; k < planes.size(); k++) {
-                 planes[k].convertTo(planes[k],CV_32FC1);
+                 planes[k].convertTo(planes[k],CV_64FC1);
+                 multiply(planes[k],quantLum,planes[k]);
                  idct(planes[k],outplanes[k]);
+                 add(planes[k], 128.0, planes[k]);
                  outplanes[k].convertTo(outplanes[k],CV_8UC1);
              }
              merge(outplanes,block);
          }
     }
-     */
 
 
 
+    cvtColor(dctImage, dctImage, CV_YCrCb2BGR);
     namedWindow(_dctwindow, CV_WINDOW_AUTOSIZE);
     moveWindow(_dctwindow, x,y);
     imshow(_dctwindow, dctImage);
-    imwrite("../Images/2_compression1.ppm",dctImage);
+    //imwrite("../Images/2_compression1.ppm",dctImage);
 
     waitKey(0);
 
