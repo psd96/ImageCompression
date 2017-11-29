@@ -38,12 +38,23 @@ double dataChrom[8][8] = {
 };
 
 void zigZag(Mat input){
+    int lastVal = (input.size().height * input.size().width) - 1;
+    int lastRow = input.rows - 1;
+    int lastCol = input.cols - 1;
 
+}
+
+void getPixelVals(Mat input){
+    for (int i = 0; i<input.rows; i++){
+        for (int j = 0; j<input.cols; i++){
+            //GET PIXEL VALUES AND DO SOMETHING
+        }
+    }
 }
 
 int main()
 {
-    Mat image = imread(_filename, CV_LOAD_IMAGE_COLOR);
+    Mat image = imread(_filename, CV_LOAD_IMAGE_UNCHANGED);
     if(image.empty()) {
         cout<<"Can't load the image from "<<_filename<<endl;
         return -1;
@@ -113,6 +124,7 @@ int main()
             }
             //Merges channel arrays into one
             merge(outplanes,block);
+            getPixelVals(block);
 
         }
     }
