@@ -12,7 +12,7 @@ using namespace std;
 
 const char* _windowname = "Original Image";
 const char* _dctwindow = "DCT Image";
-const char* _filename = "../Images/2.ppm";
+const char* _filename = "../Images/Fish.jpg";
 
 //Data for quantization matrix
 int dataLum[8][8] = {
@@ -44,17 +44,51 @@ void zigZag(Mat input){
 
 }
 
-void getPixelVals(Mat input){
-    for (int i = 0; i<input.rows; i++){
-        for (int j = 0; j<input.cols; i++){
+void getPixelVals(Mat input) {
+    float val[64];
+    int x = 0;
+    for (int i = 0; i < input.size().height; i++) {
+        for (int j = 0; j < input.size().width; j++) {
             //GET PIXEL VALUES AND DO SOMETHING
+            val[x] = input.at<char>(j,i);
+            x++;
+        }
+    }
+
+    for (int i = 0; i < 64; i++) {
+        cout << "" << val[i] << ",";
+    }
+    cout << ". \n" << endl;
+}
+
+void round (vector<Mat> &input){
+    for (int i = 0; i<input.size(); i++){
+        for (int y = 0; y<input[i].size().height; y++) {
+            for (int x = 0; x < input[i].size().width; x++) {
+                round(input[i].at<double>(x,y));
+            }
         }
     }
 }
 
+
+
+/*void huffman(float &array[], int size){
+    for (int i = 0; i<size; i++) {
+        int freq = 0;
+        int curr = array[i];
+        for (int j = 0; j < size; j++) {
+            if (array[j] == curr){
+                freq++;
+                //ONCE MATCHED REMOVE IT
+            }
+        }
+    }
+}*/
+
 int main()
 {
-    Mat image = imread(_filename, CV_LOAD_IMAGE_UNCHANGED);
+    Mat image = imread(_filename, 1);
     if(image.empty()) {
         cout<<"Can't load the image from "<<_filename<<endl;
         return -1;
@@ -62,6 +96,26 @@ int main()
 
     int x = 0;
     int y = 0;
+
+
+    /*for (int x = 0; x<8; x++){
+        for (int y = 0; y<8; y++){
+            //For more compression, lower image quality. QUALITY_LEVEL lower than 50
+            dataLum[x][y] = (50/QUALITY_LEVEL) * dataLum[x][y];
+            //For less compression, higher image quality. QUALITY_LEVEL higher than 50
+            dataLum[x][y] = ((100-QUALITY_LEVEL)/50) * dataLum[x][y];
+        }
+    }*/
+
+
+
+    //Convert the 2D array data to image matrix
+    Mat quantLum = Mat(8,8,CV_64F,&dataLum);
+    Mat quantChrom = Mat(8,8,CV_64F,&dataChrom);
+
+    /*double scale = (200-2*80) / 100.0;
+    multiply(quantLum, scale, quantLum);
+    multiply(quantChrom, scale, quantChrom);*/
 
     namedWindow(_windowname, CV_WINDOW_AUTOSIZE);
     moveWindow(_windowname, x, y);
@@ -72,80 +126,54 @@ int main()
 
     int height = image.size().height;
     int width = image.size().width;
-    Mat dctImage = image.clone();
+    int border_w = width % 8;
+    int border_h = height % 8;
+    Mat dctImage;
+    copyMakeBorder(image,dctImage,0,border_h,0,border_w,BORDER_CONSTANT);
     cvtColor(dctImage, dctImage, CV_BGR2YCrCb);
-    /*dctImage.convertTo(dctImage, CV_64FC1);
-    dct(dctImage, dctImage);
-    imshow("DCT", dctImage);
-    idct(dctImage, dctImage);
-    dctImage.convertTo(dctImage, CV_8UC1);*/
-
-
-
-    /*
-    //Changing Quality Level
-    for (int x = 0; x<8; x++){
-        for (int y = 0; y<8; y++){
-            //For more compression, lower image quality. QUALITY_LEVEL lower than 50
-            data[x][y] = (50/QUALITY_LEVEL) * data[x][y];
-            //For less compression, higher image quality. QUALITY_LEVEL higher than 50
-             data[x][y] = ((100-QUALITY_LEVEL)/50) * data[x][y];
-
-        }
-    }
-     */
-
-    //Convert the 2D array data to image matrix
-    Mat quantLum = Mat(8,8,CV_64FC1,&dataLum);
-    Mat quantChrom = Mat(8,8,CV_64FC1,&dataChrom);
-
-
 
     //Discrete Cosine Transform
     //Splits Image into blocks 8x8 and performs DCT on each of these blocks.
     for(int i=0; i < height; i+=8) {
         for(int j=0; j < width; j+=8) {
-            //Takes a block from Image of size 8x8 starting at (i,j)
             Mat block = dctImage(Rect(j,i,8,8));
-            vector<Mat> planes;
-
-            //Splits image into single channel array, planes.
+            //block.convertTo(block, CV_64F);
+            vector<Mat>planes;
             split(block,planes);
-            vector<Mat> outplanes(planes.size());
-
-            //Loop through all channels and perform DCT
-            for(int k=0; k < planes.size(); k++) {
-                planes[k].convertTo(planes[k],CV_64FC1);
+            for (int k = 0; k < planes.size(); k++){
+                planes[k].convertTo(planes[k], CV_64FC1);
                 subtract(planes[k], 128.0, planes[k]);
-                dct(planes[k],outplanes[k]);
-                //Quantization
-                divide(outplanes[k],quantLum,outplanes[k]);
-                outplanes[k].convertTo(outplanes[k],CV_8UC1);
+                divide(planes[k], 255.0, planes[k]);
+                dct(planes[k], planes[k]);
+
+                if (k==0) {
+                    divide(planes[k], quantLum, planes[k]);
+                } else {
+                    divide(planes[k], quantChrom, planes[k]);
+                }
+
+                //planes[k].convertTo(planes[k],CV_8UC1, 1.0, 0.0);
+                //planes[k].convertTo(planes[k], CV_64FC1);
+
+                if (k==0) {
+                    multiply(planes[k], quantLum, planes[k]);
+                } else {
+                    multiply(planes[k], quantChrom, planes[k]);
+                }
+
+                idct(planes[k], planes[k]);
+                multiply(planes[k], 255.0, planes[k]);
+                add(planes[k], 128, planes[k]);
+                planes[k].convertTo(planes[k], CV_8UC1);
+
             }
-            //Merges channel arrays into one
-            merge(outplanes,block);
-            getPixelVals(block);
+            merge(planes, block);
+            //imshow(_dctwindow, dctImage);
+            //multiply(block, 255.0, block);
+            //add(block, 128, block);
+            //block.convertTo(block, CV_8U);
 
         }
-    }
-    //imshow("COMPRESSION", dctImage);
-
-    //Inverse Discrete Cosine Transform
-    for(int i=0; i < height; i+=8) {
-         for(int j=0; j < width; j+=8) {
-             Mat block = dctImage(Rect(j,i,8,8));
-             vector<Mat> planes;
-             split(block,planes);
-             vector<Mat> outplanes(planes.size());
-             for(int k=0; k < planes.size(); k++) {
-                 planes[k].convertTo(planes[k],CV_64FC1);
-                 multiply(planes[k],quantLum,planes[k]);
-                 idct(planes[k],outplanes[k]);
-                 add(planes[k], 128.0, planes[k]);
-                 outplanes[k].convertTo(outplanes[k],CV_8UC1);
-             }
-             merge(outplanes,block);
-         }
     }
 
 
