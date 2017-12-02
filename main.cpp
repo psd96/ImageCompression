@@ -6,13 +6,15 @@
 #include<opencv2/highgui/highgui.hpp>
 #include<opencv2/imgproc/imgproc.hpp>
 #include<opencv2/objdetect/objdetect.hpp>
+#include <fstream>
 
 using namespace cv;
 using namespace std;
 
 const char* _windowname = "Original Image";
 const char* _dctwindow = "DCT Image";
-const char* _filename = "../Images/Fish.jpg";
+const char* _filename = "../Images/PandaOriginal.bmp";
+const char* _savefile = "../Compressed.txt";
 
 //Data for quantization matrix
 double dataLum[8][8] = {
@@ -60,23 +62,6 @@ void zigZag(Mat input){
 
 }
 
-void getPixelVals(Mat input) {
-    float val[64];
-    int x = 0;
-    for (int i = 0; i < input.size().height; i++) {
-        for (int j = 0; j < input.size().width; j++) {
-            //GET PIXEL VALUES AND DO SOMETHING
-            val[x] = input.at<char>(j,i);
-            x++;
-        }
-    }
-
-    for (int i = 0; i < 64; i++) {
-        cout << "" << val[i] << ",";
-    }
-    cout << ". \n" << endl;
-}
-
 void roundPixel (Mat &input){
     for (int y = 0; y<input.size().height; y++) {
             for (int x = 0; x < input.size().width; x++) {
@@ -87,6 +72,12 @@ void roundPixel (Mat &input){
         }
 }
 
+void frequency(Mat image){
+    int size = 64;
+    int pixelVal[size];
+
+
+}
 
 
 /*void huffman(float &array[], int size){
@@ -103,17 +94,11 @@ void roundPixel (Mat &input){
 }*/
 
 void compress(Mat image, Mat &dctImage){
-    int height = image.size().height;
-    int width = image.size().width;
-    int border_w = width % 8;
-    int border_h = height % 8;
-
-    scaleQuant(10);
+    scaleQuant(50);
     //Convert the 2D array data to image matrix
     Mat quantLum = Mat(8,8,CV_64FC1,&dataLum);
     Mat quantChrom = Mat(8,8,CV_64FC1,&dataChrom);
 
-    copyMakeBorder(image,dctImage,0,border_h,0,border_w,BORDER_CONSTANT);
     int newWidth = dctImage.size().width;
     int newHeight = dctImage.size().height;
     cvtColor(dctImage, dctImage, CV_BGR2YCrCb);
@@ -144,10 +129,10 @@ void compress(Mat image, Mat &dctImage){
         }
     }
     merge(planes, dctImage);
+
 }
 
 void deCompress(Mat &dctImage){
-    //cvtColor(dctImage, dctImage, CV_BGR2YCrCb);
     int newWidth = dctImage.size().width;
     int newHeight = dctImage.size().height;
 
@@ -183,6 +168,44 @@ void deCompress(Mat &dctImage){
     cvtColor(dctImage, dctImage, CV_YCrCb2BGR);
 }
 
+void saveToFile (Mat &input){
+    Mat grayImage;
+    cvtColor(input, grayImage, CV_BGR2GRAY);
+    Mat binary(grayImage.size(), grayImage.type());
+    threshold(grayImage, binary, 128, 255, CV_THRESH_BINARY);
+
+    ofstream outputFile;
+    outputFile.open(_savefile);
+
+    for(int i = 0; i<binary.cols; i++){
+        for (int j = 0; j<binary.rows; j++){
+            int pixel = binary.at<uchar>(i,j);
+            outputFile << pixel << '\t';
+        }
+        outputFile << endl;
+    }
+    outputFile.close();
+}
+
+void getCR(double &size){
+    ifstream compressed(_savefile, ifstream::in | ifstream::binary);
+    compressed.seekg(0, ios::end);
+    double compSize = compressed.tellg();
+    cout << compSize <<endl;
+    compressed.close();
+
+    ifstream orginal(_filename, ifstream::in | ifstream::binary);
+    orginal.seekg(0, ios::end);
+    double orginalSize = orginal.tellg();
+    cout << orginalSize <<endl;
+    orginal.close();
+
+    size = orginalSize / compSize;
+    cout<<size<<endl;
+    cout << endl;
+
+}
+
 int main()
 {
     Mat image = imread(_filename, 1);
@@ -193,6 +216,7 @@ int main()
 
     int x = 0;
     int y = 0;
+    double CR = 0;
 
     namedWindow(_windowname, CV_WINDOW_AUTOSIZE);
     moveWindow(_windowname, x, y);
@@ -201,14 +225,25 @@ int main()
     x += 400;
     y += 0;
 
+    int height = image.size().height;
+    int width = image.size().width;
+    int border_w = width % 8;
+    int border_h = height % 8;
+
     Mat dctImage;
+    copyMakeBorder(image,dctImage,0,border_h,0,border_w,BORDER_CONSTANT);
     compress(image, dctImage);
+    Mat finalImage = dctImage(Rect(0,0,width,height));
+    saveToFile(finalImage);
+    getCR(CR);
+    cout << CR << endl;
     deCompress(dctImage);
+    //Mat finalImage = dctImage(Rect(0,0,width,height));
 
     namedWindow(_dctwindow, CV_WINDOW_AUTOSIZE);
     moveWindow(_dctwindow, x,y);
-    imshow(_dctwindow, dctImage);
-    //imwrite("../Images/2_compression1.ppm",dctImage);
+    imshow(_dctwindow, finalImage);
+    //imwrite("../Images/2_compression1.bmp",finalImage);
 
     waitKey(0);
 
