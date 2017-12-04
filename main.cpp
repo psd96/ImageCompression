@@ -14,7 +14,7 @@ using namespace std;
 const char* _windowname = "Original Image";
 const char* _dctwindow = "Decompressed Image";
 const char* _filename = "../Images/Fish.jpg";
-const char* _savefile = "../Compressed.jpg";
+const char* _savefile = "../Compressed2.png";
 
 //Data for quantization matrix
 double dataLum[8][8] = {
@@ -58,7 +58,6 @@ void scaleQuant(int quality){
 void zigZag(Mat input, vector<int>&output){
     int width = input.size().width - 1;
     int height = input.size().height - 1;
-    int total = input.size().height * input.size().width;
     int currX = 0;
     int currY = 0;
     int val = 0;
@@ -110,14 +109,6 @@ void zigZag(Mat input, vector<int>&output){
     }
 
     cout << "SIZE: " << output.size() << endl;
-
-    //LOOP
-    //X+1 IF X!=WIDTH ELSE Y+1
-    //DOWNWARDS DIAGONAL - -X AND +Y UNTIL Y=0
-    //Y+1 IF Y!=HEIGHT ELSE X+1
-    //UPWARDS DIAGONAL - +X AND -Y UNTIL X=0
-
-
 }
 
 void roundPixel (Mat &input){
@@ -130,22 +121,6 @@ void roundPixel (Mat &input){
         }
 }
 
-void createVector(Mat input, vector<int>&output){
-    int width = input.size().width;
-    int height = input.size().height;
-
-    for (int i = 0; i < height; i++){
-        for (int j = 0; j < width; j++){
-            int val = input.at<int>(j,i);
-            output.push_back(val);
-        }
-    }
-}
-
-void getValues(){
-
-}
-
 void frequency(Mat image){
     int size = 64;
     int pixelVal[size];
@@ -154,21 +129,58 @@ void frequency(Mat image){
 }
 
 
-/*void huffman(float &array[], int size){
-    for (int i = 0; i<size; i++) {
-        int freq = 0;
-        int curr = array[i];
-        for (int j = 0; j < size; j++) {
-            if (array[j] == curr){
-                freq++;
-                //ONCE MATCHED REMOVE IT
+void huffman(Mat image){
+
+}
+
+void runLength (Mat image){
+    int width = image.size().width;
+    int height = image.size().height;
+    int shortestRun = 1;
+    vector<float> Yvalues;
+    vector<float> Crvalues;
+    vector<float> Cbvalues;
+
+    for (int i = 0; i < height; i++){
+        float Ycount = 0;
+        float Crcount = 0;
+        float Cbcount = 0;
+        for (int j = 0; j < width; j++){
+            Vec3b pixel = image.at<Vec3b>(j,i);
+            Yvalues.push_back((float)pixel[0]);
+            Crvalues.push_back((float)pixel[1]);
+            Cbvalues.push_back((float)pixel[2]);
+
+            Ycount++;
+            Crcount++;
+            Cbcount++;
+
+            while (j + 1 < width) {
+                Vec3b nextPixel = image.at<Vec3b>(j+1,i);
+                if (pixel[0] == (float) nextPixel[0]) {
+                    Ycount++;
+                }
+                if (pixel[1] == (float) nextPixel[1]) {
+                    Crcount++;
+                }
+                if (pixel[2] == (float) nextPixel[2]) {
+                    Cbcount++;
+                }
+                j++;
             }
+            Yvalues.push_back(Ycount);
+            Crvalues.push_back(Crcount);
+            Cbvalues.push_back(Cbcount);
         }
     }
-}*/
+
+    for (int i = 0; i < Cbvalues.size(); i++){
+        cout << Cbvalues[i] << endl;
+    }
+}
 
 void compress(Mat &dctImage){
-    scaleQuant(10);
+    scaleQuant(15);
     //Convert the 2D array data to image matrix
     Mat quantLum = Mat(8,8,CV_64FC1,&dataLum);
     Mat quantChrom = Mat(8,8,CV_64FC1,&dataChrom);
@@ -178,6 +190,10 @@ void compress(Mat &dctImage){
     cvtColor(dctImage, dctImage, CV_BGR2YCrCb);
 
     vector<Mat> planes;
+    vector<int> Y_channel;
+    vector<int> Cr_channel;
+    vector<int> Cb_channel;
+
     split(dctImage, planes);
 
     for(int i=0; i < newHeight; i+=8) {
@@ -195,19 +211,18 @@ void compress(Mat &dctImage){
                 }
 
                 roundPixel(block);
-                //GET ALL VALUES INTO A VECTOR
                 add(block, 128.0, block);
                 block.convertTo(block, CV_8UC1);
                 block.copyTo(planes[channel](Rect(j, i, 8, 8)));
             }
-            //THEN DO HUFFMAN ON THE BLOCKS
         }
     }
     merge(planes, dctImage);
-
+    runLength(dctImage);
 }
 
 void deCompress(Mat &dctImage){
+    //cvtColor(dctImage, dctImage, CV_BGR2YCrCb);
     int newWidth = dctImage.size().width;
     int newHeight = dctImage.size().height;
 
@@ -278,7 +293,6 @@ void getCR(double &size){
     size = orginalSize / compSize;
     cout<<size<<endl;
     cout << endl;
-
 }
 
 int main()
@@ -308,13 +322,13 @@ int main()
     Mat dctImage;
     copyMakeBorder(image,dctImage,0,border_h,0,border_w,BORDER_CONSTANT);
     compress(dctImage);
-    Mat finalImage = dctImage(Rect(0,0,width,height));
-    //saveToFile(finalImage);
-    imwrite(_savefile,finalImage);
+    Mat compImage = dctImage(Rect(0,0,width,height));
+    //saveToFile(compImage);
+    imwrite(_savefile,compImage);
     getCR(CR);
     cout << CR << endl;
     deCompress(dctImage);
-    //Mat finalImage = dctImage(Rect(0,0,width,height));
+    Mat finalImage = dctImage(Rect(0,0,width,height));
 
     namedWindow(_dctwindow, CV_WINDOW_AUTOSIZE);
     moveWindow(_dctwindow, x,y);
