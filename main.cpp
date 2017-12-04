@@ -12,9 +12,9 @@ using namespace cv;
 using namespace std;
 
 const char* _windowname = "Original Image";
-const char* _dctwindow = "DCT Image";
-const char* _filename = "../Images/PandaOriginal.bmp";
-const char* _savefile = "../Compressed.txt";
+const char* _dctwindow = "Decompressed Image";
+const char* _filename = "../Images/Fish.jpg";
+const char* _savefile = "../Compressed.jpg";
 
 //Data for quantization matrix
 double dataLum[8][8] = {
@@ -55,10 +55,68 @@ void scaleQuant(int quality){
     }
 }
 
-void zigZag(Mat input){
-    int lastVal = (input.size().height * input.size().width) - 1;
-    int lastRow = input.rows - 1;
-    int lastCol = input.cols - 1;
+void zigZag(Mat input, vector<int>&output){
+    int width = input.size().width - 1;
+    int height = input.size().height - 1;
+    int total = input.size().height * input.size().width;
+    int currX = 0;
+    int currY = 0;
+    int val = 0;
+
+    //START (0,0)
+    val = input.at<int>(currX,currY);
+    output.push_back(val);
+
+    while (currX < width || currY < height){
+
+        //X+1 IF X!=WIDTH ELSE Y+1
+        if ((currX + 1) <= width){
+            currX ++;
+            val = input.at<int>(currX,currY);
+            output.push_back(val);
+        } else {
+            currY ++;
+            val = input.at<int>(currX,currY);
+            output.push_back(val);
+        }
+
+        //DOWNWARDS DIAGONAL - -X AND +Y UNTIL Y=0
+        while ((currX > 0) && (currY < height)){
+            currX --;
+            currY ++;
+            val = input.at<int>(currX,currY);
+            output.push_back(val);
+        }
+
+        //Y+1 IF Y!=HEIGHT ELSE X+1
+        if ((currY + 1)<height){
+            currY ++;
+            val = input.at<int>(currX,currY);
+            output.push_back(val);
+        } else {
+            currX ++;
+            val = input.at<int>(currX,currY);
+            output.push_back(val);
+        }
+
+        //UPWARDS DIAGONAL - +X AND -Y UNTIL X=0
+        while ((currX < width) && (currY > 0)){
+            currX ++;
+            currY --;
+            val = input.at<int>(currX,currY);
+            output.push_back(val);
+        }
+
+    }
+
+    cout << "SIZE: " << output.size() << endl;
+
+    //LOOP
+    //X+1 IF X!=WIDTH ELSE Y+1
+    //DOWNWARDS DIAGONAL - -X AND +Y UNTIL Y=0
+    //Y+1 IF Y!=HEIGHT ELSE X+1
+    //UPWARDS DIAGONAL - +X AND -Y UNTIL X=0
+
 
 }
 
@@ -70,6 +128,22 @@ void roundPixel (Mat &input){
                 input.at<double>(x,y) = val;
             }
         }
+}
+
+void createVector(Mat input, vector<int>&output){
+    int width = input.size().width;
+    int height = input.size().height;
+
+    for (int i = 0; i < height; i++){
+        for (int j = 0; j < width; j++){
+            int val = input.at<int>(j,i);
+            output.push_back(val);
+        }
+    }
+}
+
+void getValues(){
+
 }
 
 void frequency(Mat image){
@@ -93,8 +167,8 @@ void frequency(Mat image){
     }
 }*/
 
-void compress(Mat image, Mat &dctImage){
-    scaleQuant(50);
+void compress(Mat &dctImage){
+    scaleQuant(10);
     //Convert the 2D array data to image matrix
     Mat quantLum = Mat(8,8,CV_64FC1,&dataLum);
     Mat quantChrom = Mat(8,8,CV_64FC1,&dataChrom);
@@ -121,11 +195,12 @@ void compress(Mat image, Mat &dctImage){
                 }
 
                 roundPixel(block);
-
+                //GET ALL VALUES INTO A VECTOR
                 add(block, 128.0, block);
                 block.convertTo(block, CV_8UC1);
                 block.copyTo(planes[channel](Rect(j, i, 8, 8)));
             }
+            //THEN DO HUFFMAN ON THE BLOCKS
         }
     }
     merge(planes, dctImage);
@@ -180,7 +255,7 @@ void saveToFile (Mat &input){
     for(int i = 0; i<binary.cols; i++){
         for (int j = 0; j<binary.rows; j++){
             int pixel = binary.at<uchar>(i,j);
-            outputFile << pixel << '\t';
+            outputFile << pixel << ', ';
         }
         outputFile << endl;
     }
@@ -232,9 +307,10 @@ int main()
 
     Mat dctImage;
     copyMakeBorder(image,dctImage,0,border_h,0,border_w,BORDER_CONSTANT);
-    compress(image, dctImage);
+    compress(dctImage);
     Mat finalImage = dctImage(Rect(0,0,width,height));
-    saveToFile(finalImage);
+    //saveToFile(finalImage);
+    imwrite(_savefile,finalImage);
     getCR(CR);
     cout << CR << endl;
     deCompress(dctImage);
@@ -249,4 +325,13 @@ int main()
 
     destroyWindow(_windowname);
     destroyWindow(_dctwindow);
+
+    /*Mat quantLum = Mat(8,8,CV_8UC1,&dataLum);
+    vector<int> temp;
+
+    zigZag(quantLum, temp);
+
+    for (int i = 0; i < temp.size(); i++){
+        cout << temp[i] << endl;
+    }*/
 }
