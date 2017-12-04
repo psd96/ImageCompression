@@ -14,7 +14,7 @@ using namespace std;
 const char* _windowname = "Original Image";
 const char* _dctwindow = "Decompressed Image";
 const char* _filename = "../Images/Fish.jpg";
-const char* _savefile = "../Compressed2.png";
+const char* _savefile = "../compressed.parv";
 
 //Data for quantization matrix
 double dataLum[8][8] = {
@@ -121,16 +121,26 @@ void roundPixel (Mat &input){
         }
 }
 
-void frequency(Mat image){
-    int size = 64;
-    int pixelVal[size];
+void saveToFile (vector<float>y, vector<float>Cr, vector<float>Cb){
+    ofstream outputFile;
+    outputFile.open(_savefile);
 
+    for(int i = 0; i<y.size(); i++){
+            outputFile << y[i];
+    }
+    outputFile << endl;
 
-}
+    for(int i = 0; i<Cr.size(); i++){
+        outputFile << Cr[i];
+    }
+    outputFile << endl;
 
+    for(int i = 0; i<Cb.size(); i++){
+        outputFile << Cb[i];
+    }
+    outputFile << endl;
 
-void huffman(Mat image){
-
+    outputFile.close();
 }
 
 void runLength (Mat image){
@@ -173,14 +183,12 @@ void runLength (Mat image){
             Cbvalues.push_back(Cbcount);
         }
     }
+    saveToFile(Yvalues, Crvalues, Cbvalues);
 
-    for (int i = 0; i < Cbvalues.size(); i++){
-        cout << Cbvalues[i] << endl;
-    }
 }
 
 void compress(Mat &dctImage){
-    scaleQuant(15);
+    scaleQuant(100);
     //Convert the 2D array data to image matrix
     Mat quantLum = Mat(8,8,CV_64FC1,&dataLum);
     Mat quantChrom = Mat(8,8,CV_64FC1,&dataChrom);
@@ -258,25 +266,6 @@ void deCompress(Mat &dctImage){
     cvtColor(dctImage, dctImage, CV_YCrCb2BGR);
 }
 
-void saveToFile (Mat &input){
-    Mat grayImage;
-    cvtColor(input, grayImage, CV_BGR2GRAY);
-    Mat binary(grayImage.size(), grayImage.type());
-    threshold(grayImage, binary, 128, 255, CV_THRESH_BINARY);
-
-    ofstream outputFile;
-    outputFile.open(_savefile);
-
-    for(int i = 0; i<binary.cols; i++){
-        for (int j = 0; j<binary.rows; j++){
-            int pixel = binary.at<uchar>(i,j);
-            outputFile << pixel << ', ';
-        }
-        outputFile << endl;
-    }
-    outputFile.close();
-}
-
 void getCR(double &size){
     ifstream compressed(_savefile, ifstream::in | ifstream::binary);
     compressed.seekg(0, ios::end);
@@ -291,8 +280,8 @@ void getCR(double &size){
     orginal.close();
 
     size = orginalSize / compSize;
-    cout<<size<<endl;
-    cout << endl;
+    //cout<<size<<endl;
+    //cout << endl;
 }
 
 int main()
@@ -322,11 +311,12 @@ int main()
     Mat dctImage;
     copyMakeBorder(image,dctImage,0,border_h,0,border_w,BORDER_CONSTANT);
     compress(dctImage);
-    Mat compImage = dctImage(Rect(0,0,width,height));
+    //Mat compImage = dctImage(Rect(0,0,width,height));
     //saveToFile(compImage);
-    imwrite(_savefile,compImage);
+    //imwrite(_savefile,compImage);
     getCR(CR);
     cout << CR << endl;
+
     deCompress(dctImage);
     Mat finalImage = dctImage(Rect(0,0,width,height));
 
