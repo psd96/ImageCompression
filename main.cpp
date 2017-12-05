@@ -1,6 +1,7 @@
 #include<iostream>
 #include<cstdio>
 #include<string>
+#include <utility>
 #include<vector>
 #include<opencv2/core/core.hpp>
 #include<opencv2/highgui/highgui.hpp>
@@ -13,8 +14,8 @@ using namespace std;
 
 const char* _windowname = "Original Image";
 const char* _dctwindow = "Decompressed Image";
-const char* _filename = "../Images/Fish.jpg";
-const char* _savefile = "../compressed.parv";
+const char* _filename = "../Images/2.ppm";
+const char* _savefile = "../compressed.txt";
 
 //Data for quantization matrix
 double dataLum[8][8] = {
@@ -55,60 +56,60 @@ void scaleQuant(int quality){
     }
 }
 
-void zigZag(Mat input, vector<int>&output){
+void zigZag(Mat input, vector<float>&output, int channels){
     int width = input.size().width - 1;
     int height = input.size().height - 1;
+    float val = 0;
+
     int currX = 0;
     int currY = 0;
-    int val = 0;
-
     //START (0,0)
-    val = input.at<int>(currX,currY);
+    val = (float)input.at<Vec3b>(currX,currY)[channels];
     output.push_back(val);
 
-    while (currX < width || currY < height){
+    while (currX < width || currY < height) {
 
         //X+1 IF X!=WIDTH ELSE Y+1
-        if ((currX + 1) <= width){
-            currX ++;
-            val = input.at<int>(currX,currY);
+        if ((currX + 1) <= width) {
+            currX++;
+            val = (float)input.at<Vec3b>(currX,currY)[channels];
             output.push_back(val);
         } else {
-            currY ++;
-            val = input.at<int>(currX,currY);
+            currY++;
+            val = (float)input.at<Vec3b>(currX,currY)[channels];
             output.push_back(val);
         }
 
         //DOWNWARDS DIAGONAL - -X AND +Y UNTIL Y=0
-        while ((currX > 0) && (currY < height)){
-            currX --;
-            currY ++;
-            val = input.at<int>(currX,currY);
+        while ((currX > 0) && (currY < height)) {
+            currX--;
+            currY++;
+            val = (float)input.at<Vec3b>(currX,currY)[channels];
             output.push_back(val);
         }
 
         //Y+1 IF Y!=HEIGHT ELSE X+1
-        if ((currY + 1)<height){
-            currY ++;
-            val = input.at<int>(currX,currY);
+        if ((currY + 1) <= height) {
+            currY++;
+            val = (float)input.at<Vec3b>(currX,currY)[channels];
             output.push_back(val);
         } else {
-            currX ++;
-            val = input.at<int>(currX,currY);
+            currX++;
+            val = (float)input.at<Vec3b>(currX,currY)[channels];
             output.push_back(val);
         }
 
         //UPWARDS DIAGONAL - +X AND -Y UNTIL X=0
-        while ((currX < width) && (currY > 0)){
-            currX ++;
-            currY --;
-            val = input.at<int>(currX,currY);
+        while ((currX < width) && (currY > 0)) {
+            currX++;
+            currY--;
+            val = (float)input.at<Vec3b>(currX,currY)[channels];
             output.push_back(val);
         }
 
     }
 
-    cout << "SIZE: " << output.size() << endl;
+    //cout << "SIZE: " << output.size() << endl;
 }
 
 void roundPixel (Mat &input){
@@ -118,77 +119,44 @@ void roundPixel (Mat &input){
                 val = round(val);
                 input.at<double>(x,y) = val;
             }
-        }
+    }
 }
 
-void saveToFile (vector<float>y, vector<float>Cr, vector<float>Cb){
+void saveToFile (vector<float>y){
     ofstream outputFile;
-    outputFile.open(_savefile);
+    outputFile.open(_savefile, ofstream::app);
 
     for(int i = 0; i<y.size(); i++){
-            outputFile << y[i];
+            outputFile << y[i] << ",";
     }
-    outputFile << endl;
-
-    for(int i = 0; i<Cr.size(); i++){
-        outputFile << Cr[i];
-    }
-    outputFile << endl;
-
-    for(int i = 0; i<Cb.size(); i++){
-        outputFile << Cb[i];
-    }
+    outputFile << "|";
     outputFile << endl;
 
     outputFile.close();
 }
 
-void runLength (Mat image){
-    int width = image.size().width;
-    int height = image.size().height;
-    int shortestRun = 1;
+void runLength (Mat image, int channels){
+    vector<float> values;
     vector<float> Yvalues;
-    vector<float> Crvalues;
-    vector<float> Cbvalues;
+    zigZag(std::move(image), values, channels);
 
-    for (int i = 0; i < height; i++){
-        float Ycount = 0;
-        float Crcount = 0;
-        float Cbcount = 0;
-        for (int j = 0; j < width; j++){
-            Vec3b pixel = image.at<Vec3b>(j,i);
-            Yvalues.push_back((float)pixel[0]);
-            Crvalues.push_back((float)pixel[1]);
-            Cbvalues.push_back((float)pixel[2]);
-
+    for (int i = 0; i<values.size(); i++){
+        int Ycount = 0;
+        Yvalues.push_back(values[i]);
+        Ycount ++;
+        while ((i+1)<values.size() && values[i] == values[i+1]){
             Ycount++;
-            Crcount++;
-            Cbcount++;
-
-            while (j + 1 < width) {
-                Vec3b nextPixel = image.at<Vec3b>(j+1,i);
-                if (pixel[0] == (float) nextPixel[0]) {
-                    Ycount++;
-                }
-                if (pixel[1] == (float) nextPixel[1]) {
-                    Crcount++;
-                }
-                if (pixel[2] == (float) nextPixel[2]) {
-                    Cbcount++;
-                }
-                j++;
-            }
-            Yvalues.push_back(Ycount);
-            Crvalues.push_back(Crcount);
-            Cbvalues.push_back(Cbcount);
+            i++;
         }
+        Yvalues.push_back((float)Ycount);
     }
-    saveToFile(Yvalues, Crvalues, Cbvalues);
+
+    saveToFile(Yvalues);
 
 }
 
 void compress(Mat &dctImage){
-    scaleQuant(100);
+    scaleQuant(50);
     //Convert the 2D array data to image matrix
     Mat quantLum = Mat(8,8,CV_64FC1,&dataLum);
     Mat quantChrom = Mat(8,8,CV_64FC1,&dataChrom);
@@ -198,10 +166,6 @@ void compress(Mat &dctImage){
     cvtColor(dctImage, dctImage, CV_BGR2YCrCb);
 
     vector<Mat> planes;
-    vector<int> Y_channel;
-    vector<int> Cr_channel;
-    vector<int> Cb_channel;
-
     split(dctImage, planes);
 
     for(int i=0; i < newHeight; i+=8) {
@@ -219,6 +183,9 @@ void compress(Mat &dctImage){
                 }
 
                 roundPixel(block);
+                runLength(block, channel);
+                //Vec3b temp = block.at<Vec3b>(j,i);
+                //cout << (float)temp[channel] << endl;
                 add(block, 128.0, block);
                 block.convertTo(block, CV_8UC1);
                 block.copyTo(planes[channel](Rect(j, i, 8, 8)));
@@ -226,11 +193,28 @@ void compress(Mat &dctImage){
         }
     }
     merge(planes, dctImage);
-    runLength(dctImage);
+    //runLength(dctImage);
+}
+
+void readCodedData(){
+    string line;
+    vector<string> temp;
+    ifstream dataFile (_savefile);
+    while (getline(dataFile, line)){
+        temp.emplace_back(line);
+    }
+    dataFile.close();
+
+    /*for (int i =0; i<temp.size(); i++){
+        cout << temp[i] << endl;
+
+    }*/
+
 }
 
 void deCompress(Mat &dctImage){
     //cvtColor(dctImage, dctImage, CV_BGR2YCrCb);
+    readCodedData();
     int newWidth = dctImage.size().width;
     int newHeight = dctImage.size().height;
 
@@ -280,8 +264,6 @@ void getCR(double &size){
     orginal.close();
 
     size = orginalSize / compSize;
-    //cout<<size<<endl;
-    //cout << endl;
 }
 
 int main()
@@ -311,9 +293,11 @@ int main()
     Mat dctImage;
     copyMakeBorder(image,dctImage,0,border_h,0,border_w,BORDER_CONSTANT);
     compress(dctImage);
+
     //Mat compImage = dctImage(Rect(0,0,width,height));
-    //saveToFile(compImage);
-    //imwrite(_savefile,compImage);
+    //saveToFile(dctImage);
+    //imwrite("../DCT.png",dctImage);
+
     getCR(CR);
     cout << CR << endl;
 
