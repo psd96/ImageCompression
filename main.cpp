@@ -15,7 +15,7 @@ using namespace std;
 
 const char* _windowname = "Original Image";
 const char* _dctwindow = "Decompressed Image";
-const char* _filename = "../Images/PandaOriginal.bmp";
+const char* _filename = "../Images/2.ppm";
 const char* _savefile = "../compressed.txt";
 
 //Quantization matrix for Luminance
@@ -584,6 +584,10 @@ int main() {
     cout << "Compressing image: " << _filename << endl;
     cout << "Please enter the quality value you would like to compress the image too (enter value in the range 1-100): " << endl;
     cin >> scale;
+    if (scale > 100){
+        scale -= 100;
+        cout << "VALUE OVER 100, SUBTRACTING SO NEW VALUE IS: "<< scale << endl;
+    }
     cout << endl;
     cout << "COMPRESSING: "<<endl;
 
