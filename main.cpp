@@ -231,6 +231,8 @@ void saveToFile (vector<double>values){
 void runLength (Mat image){
     vector<double> values;
     vector<double> ZigZagvalues;
+
+    //Perform Zig-Zag scan and populate values
     zigZag(std::move(image), values);
 
     for (int i = 0; i<values.size(); i++){
@@ -306,7 +308,7 @@ void compress(Mat &dctImage, int scale){
                 //Round each pixel in the block to the nearest whole number
                 roundPixel(block);
 
-                //Perform Run Length(RLC) on the block
+                //Perform Run Length(RLE) on the block
                 runLength(block);
 
                 //Add 128 to each pixel
@@ -362,9 +364,9 @@ vector<double> readCodedData() {
     return data;
 }
 
-void undoRLC(vector<double> data, vector<double> &values) {
+void undoRLE(vector<double> data, vector<double> &values) {
 
-    //Used to create a vector with all the values (Undoing the RLC)
+    //Used to create a vector with all the values (Undoing the RLE)
     for (int i = 0; i < data.size() - 1; i+=2){
         //Get the first value and how many times it is repeated
         double pixel = data[i];
@@ -501,7 +503,7 @@ Mat deCompress(){
     scaleQuant(scale, false);
 
     //Undo Run Length Encoding
-    undoRLC(data, values);
+    undoRLE(data, values);
 
     //Blank Mat with 3 channels to rebuild the image
     Mat decodedImage = Mat(height, width, CV_8UC3, CV_RGB(1,1,1));
