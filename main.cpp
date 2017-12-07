@@ -308,7 +308,7 @@ void compress(Mat &dctImage, int scale){
                 //Round each pixel in the block to the nearest whole number
                 roundPixel(block);
 
-                //Perform Run Length(RLE) on the block
+                //Perform Run Length(RLE50) on the block
                 runLength(block);
 
                 //Add 128 to each pixel
@@ -548,6 +548,42 @@ void getCR(double &size){
     size = orginalSize / compSize;
 }
 
+float mse (Mat image1, Mat image2) {
+    cvtColor(image1, image1, CV_BGR2GRAY);
+    cvtColor(image2, image2, CV_BGR2GRAY);
+
+    float sum = 0.0;
+    float mse;
+    for (int x = 0; x < image1.rows; x++){
+        for (int y = 0; y < image1.cols; y++){
+            //Get values of each image at (x,y)
+            Vec3b original = image1.at<Vec3b>(x,y);
+            float originalB = original[0];
+            float originalG = original[1];
+            float originalR = original[2];
+
+            Vec3b compressed = image2.at<Vec3b>(x,y);
+            float compressedB = compressed[0];
+            float compressedG = compressed[1];
+            float compressedR = compressed[2];
+
+            //Calculate difference in pixel intensity
+            float diffrenceB = (originalB - compressedB);
+            float diffrenceG = (originalG - compressedG);
+            float diffrenceR = (originalR - compressedR);
+
+            float d = ((diffrenceB + diffrenceG + diffrenceR) * (diffrenceB + diffrenceG + diffrenceR)) / 3;
+
+            //Running total of difference squared
+            sum += (d);
+        }
+    }
+
+    //Divide sum by number of pixels in image
+    mse = (sum / (image1.total()));
+    return mse;
+}
+
 int main() {
     //Load image to compress
     Mat image = imread(_filename, 1);
@@ -617,6 +653,10 @@ int main() {
 
     //Remove border
     Mat finalImage = deCompressedImage(Rect(0,0,width,height));
+
+    float mseVal = mse(image, finalImage);
+    cout << endl;
+    cout << "Mean Square Error of Compressed Image is: "<< mseVal << endl;
 
     namedWindow(_dctwindow, CV_WINDOW_AUTOSIZE);
     moveWindow(_dctwindow, x,y);
