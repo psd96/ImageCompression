@@ -15,7 +15,9 @@ using namespace std;
 
 const char* _windowname = "Original Image";
 const char* _dctwindow = "Decompressed Image";
+//Image to compress
 const char* _filename = "../Images/2.ppm";
+//File to save compressed data too
 const char* _savefile = "../compressed.txt";
 
 //Quantization matrix for Luminance
@@ -649,7 +651,7 @@ int main() {
 
     //Calculate and print Compression Ratio
     getCR(CR);
-    cout << "Compression Ration is: " << CR << endl;
+    cout << "Compression Ratio is: " << CR << endl;
 
     //Remove border
     Mat finalImage = deCompressedImage(Rect(0,0,width,height));
